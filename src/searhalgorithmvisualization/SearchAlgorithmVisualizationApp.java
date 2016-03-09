@@ -23,44 +23,82 @@ public class SearchAlgorithmVisualizationApp implements PanAndZoom2DApp{
     private G2D g2d;
     private Tile[][] tiles;
     private TileDrawer tileDrawer;
-    private Astar astar;
+    private Astar astar; 
     
     @Override
     public PanAndZoomInit initialize(PanAndZoomToolKit tk, double aspectRatio){
-        int startX = 2; int startY = 2;
-        int goalX = 4; int goalY = 4;
-        astar = new Astar();
+        int startX = 0; int startY = 9;   //0,9   0,0  6,7
+        int goalX   = 12; int goalY   = 9;   //4,4   -   9,4
+        astar = new Astar(); 
+        astar.initWalls();
         
         int worldWidth = astar.getWorldWidth();
         int worldHeight = astar.getWorldHeight();
         tiles = new Tile[worldWidth][worldHeight];
         for(int y = 0; y < worldHeight; ++y){
             for(int x = 0; x < worldWidth; ++x){
-                tiles[x][y] = new Tile(x, y);
-                int valueH;
-                if(   (x+y) - (startX+startY)  >= 0 ){
-                    valueH = (x+y) - (startX+startY) ;
-                }else{
-                    valueH = ((x+y) - (startX+startY))*-1;
-                }
                 
-                tiles[x][y].setH( valueH );
+                boolean iAmWall = false;
+                for(Tile wall : astar.getWalls()){
+                    if( wall.getXPos() == x && wall.getYPos() == y ){
+                         tiles[x][y] = new Tile(x, y,true); // makes a wall
+                        iAmWall = true; 
+                    }
+                }
+                if(   ! iAmWall   ){ 
+                    tiles[x][y] = new Tile(x, y); 
+                }
             }
         }
         astar.setStart              (tiles[startX][startY]);
         astar.setGoal                (tiles[goalX][goalY]);
-        astar.setCurrentTile    (tiles[startX][startY]);
-        astar.addStartClosedList();
+        astar.setCurrentTile     (tiles[startX][startY]);
+        tiles[startX][startY].setOnShortestPath();
+        tiles[goalX][goalY].setToIAmGoal();
         
         Tile startTile = astar.getStart();
-        if(startX > 0)
+        startTile.setG(0);
+        //tilføj neighbour  left
+        if( startX > 0   &&   !tiles[startX-1][startY].isWall() ){
             startTile.addNeighBour(tiles[startX-1][startY]);
-        if(startY > 0)
+            tiles[startX-1][startY].setG(10);
+        }
+        //tilføj neighbour  up  left
+        if( startX > 0   &&    startY < worldHeight-1   &&   !tiles[startX-1][startY+1].isWall() ){
+            startTile.addNeighBour(tiles[startX-1][startY+1]);
+            tiles[startX-1][startY+1].setG(14);
+        }
+        //tilføj neighbour  down  left
+        if( startX > 0   &&   startY > 0   &&   !tiles[startX-1][startY-1].isWall() ){
+            startTile.addNeighBour(tiles[startX-1][startY-1]);
+            tiles[startX-1][startY-1].setG(14);
+        }
+         //tilføj neighbour  upper right
+        if(startY < worldHeight-1   &&   startX < worldWidth-1   &&   !tiles[startX+1][startY+1].isWall()){
+            startTile.addNeighBour(tiles[startX+1][startY+1]);
+            tiles[startX+1][startY+1].setG(14);
+        }
+        //tilføj neighbour down right 
+        if(startX < worldWidth-1   &&   startY > 0   &&   !tiles[startX+1][startY-1].isWall()){
+            startTile.addNeighBour(tiles[startX+1][startY-1]);
+            tiles[startX+1][startY-1].setG(1);
+        }
+         //tilføj neighbour  down  
+        if( startY > 0   &&   !tiles[startX][startY-1].isWall() ){
             startTile.addNeighBour(tiles[startX][startY-1]);
-        if(startX < worldWidth-1)
+            tiles[startX][startY-1].setG(1);
+        }
+         //tilføj neighbour  right 
+        if(startX < worldWidth-1   &&   !tiles[startX+1][startY].isWall()){
             startTile.addNeighBour(tiles[startX+1][startY]);
-        if(startY < worldHeight-1)
+            tiles[startX+1][startY].setG(10);
+        }
+         //tilføj neighbour  upper
+        if(startY < worldHeight-1    &&   !tiles[startX][startY+1].isWall()){
             startTile.addNeighBour(tiles[startX][startY+1]);
+            tiles[startX][startY+1].setG(10);
+        }
+
         
         this.hudHeight = 1000;
         this.hudWidth = hudHeight * aspectRatio;
@@ -98,7 +136,6 @@ public class SearchAlgorithmVisualizationApp implements PanAndZoom2DApp{
     @Override
     public void onKeyPressed(KeyPressedEvent e){
          Key key = e.getKey();
-         System.out.println("Key pressed: "+key);
          if(key == Key.VK_SPACE){
              astar.step(tiles);
          }
